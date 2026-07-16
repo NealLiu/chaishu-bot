@@ -1,0 +1,232 @@
+{
+  "name": "📚 拆书自动化工作流",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "⏰ 每日8点触发",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 100]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chaishu",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "🖐 手动指定书籍",
+      "type": "n8n-nodes-base.webhook",
+      "position": [200, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": [
+            {
+              "conditions": [
+                {
+                  "leftValue": "={{ $json.body?.book }}",
+                  "rightValue": "",
+                  "operator": {
+                    "type": "string",
+                    "operation": "isNotEmpty"
+                  }
+                }
+              ],
+              "renameOutput": true,
+              "outputName": "manual"
+            }
+          ]
+        },
+        "fallbackOutput": "auto"
+      },
+      "id": "book-router",
+      "name": "🔀 手动 / 自动?",
+      "type": "n8n-nodes-base.switch",
+      "position": [440, 210]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 自动模式：读取偏好图谱，构建推荐请求\nconst prefs = $input.first().json;\n// 如果有手动指定的书，直接使用\nconst manualBook = $('🖐 手动指定书籍').first().json.body?.book;\nconst manualAuthor = $('🖐 手动指定书籍').first().json.body?.author;\n\nif (manualBook) {\n  return {\n    mode: 'manual',\n    book: manualBook,\n    author: manualAuthor || ''\n  };\n}\n\n// 自动模式：将偏好图谱传给 DeepSeek 做推荐\nreturn {\n  mode: 'auto',\n  preferences: prefs,\n  recommended: true\n};"
+      },
+      "id": "book-selector",
+      "name": "📖 书籍选择逻辑",
+      "type": "n8n-nodes-base.code",
+      "position": [660, 210]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.deepseek.com/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "deepseek-v4-pro"
+            },
+            {
+              "name": "temperature",
+              "value": 0.7
+            },
+            {
+              "name": "messages",
+              "value": "=[\n  {\n    \"role\": \"system\",\n    \"content\": $json.system_prompt\n  },\n  {\n    \"role\": \"user\",\n    \"content\": $json.user_prompt\n  }\n]"
+            },
+            {
+              "name": "response_format",
+              "value": "={\"type\": \"json_object\"}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "deepseek-call",
+      "name": "🧠 DeepSeek 拆书",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [880, 210]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 将 DeepSeek 返回的 JSON 填充到 Markdown 模板中\nconst bookData = $input.first().json.choices[0].message.content;\nconst parsed = typeof bookData === 'string' ? JSON.parse(bookData) : bookData;\n\nconst date = new Date().toISOString().split('T')[0];\n\n// 构建 tags 数组 JSON 字符串\nconst tagsJson = JSON.stringify(parsed.tags || []);\nconst nextJson = JSON.stringify(parsed.next_suggestions || []);\n\n// 填充 5 个知识点\nconst kp = parsed.key_points || [];\n\nconst markdown = `---\ntitle: \"📖 《${parsed.book_title}》——${parsed.one_line_summary || ''}\"\nauthor: ${parsed.author || ''}\ncategory: ${parsed.category || ''}\ntags: ${tagsJson}\ndate: ${date}\nsource: auto\nnext_suggestion: ${nextJson}\n---\n\n# 📖 《${parsed.book_title}》——${parsed.one_line_summary || ''}\n\n> **为什么推荐这本书？** ${parsed.recommendation_reason || ''}\n\n---\n\n## 🎯 核心框架\n\n${parsed.core_framework || ''}\n\n---\n\n## 📌 五个核心知识点\n\n### 1️⃣ ${kp[0]?.title || ''}\n\n${kp[0]?.content || ''}\n\n> 🔑 **关键洞见：** ${kp[0]?.insight || ''}\n\n🫁 **试试看：** ${kp[0]?.practice || ''}\n\n### 2️⃣ ${kp[1]?.title || ''}\n\n${kp[1]?.content || ''}\n\n> 🔑 **关键洞见：** ${kp[1]?.insight || ''}\n\n🫁 **试试看：** ${kp[1]?.practice || ''}\n\n### 3️⃣ ${kp[2]?.title || ''}\n\n${kp[2]?.content || ''}\n\n> 🔑 **关键洞见：** ${kp[2]?.insight || ''}\n\n🫁 **试试看：** ${kp[2]?.practice || ''}\n\n### 4️⃣ ${kp[3]?.title || ''}\n\n${kp[3]?.content || ''}\n\n> 🔑 **关键洞见：** ${kp[3]?.insight || ''}\n\n🫁 **试试看：** ${kp[3]?.practice || ''}\n\n### 5️⃣ ${kp[4]?.title || ''}\n\n${kp[4]?.content || ''}\n\n> 🔑 **关键洞见：** ${kp[4]?.insight || ''}\n\n🫁 **试试看：** ${kp[4]?.practice || ''}\n\n---\n\n## 💎 一句话记住这本书\n\n> ${parsed.golden_quote || ''}\n\n---\n\n## 🛠️ 今日行动清单\n\n${(parsed.action_items || []).map(item => `- [ ] ${item}`).join('\\n')}\n\n---\n\n## 📎 关联推荐\n\n| 方向 | 推荐书籍 | 为什么关联 |\n|------|---------|-----------|\n${(parsed.next_suggestions || []).map(s => `| ${s.direction === '横向拓展' ? '🔄 横向拓展' : s.direction === '深度延伸' ? '↗️ 深度延伸' : '➡️ 实用落地'} | 《${s.book}》 | ${s.reason} |`).join('\\n')}\n\n---\n*generated by 拆书工作流 · ${date}*`;\n\nconst safeFileName = parsed.book_title.replace(/[\\\\/:*?\"<>|]/g, '-');\n\nreturn {\n  book_title: parsed.book_title,\n  author: parsed.author,\n  tags: parsed.tags,\n  category: parsed.category,\n  next_suggestions: parsed.next_suggestions,\n  markdown: markdown,\n  file_name: `${date} 《${safeFileName}》拆书`,\n  date: date\n};"
+      },
+      "id": "template-filler",
+      "name": "📝 填充 Markdown 模板",
+      "type": "n8n-nodes-base.code",
+      "position": [1100, 210]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://127.0.0.1:27124/vault/books/{{ $json.file_name }}.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer bac002edf2c1ace10f815607e8901a4a890e505169f8ee3a10b45a77bc4dc760"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/markdown"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{ $json.markdown }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "obsidian-write",
+      "name": "📓 写入 Obsidian",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1320, 210]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst dir = '/Users/a123/Documents/Obsidian Vault/拆书';\nconst data = JSON.stringify({ book_title: $json.book_title, tags: $json.tags, category: $json.category, next_suggestions: $json.next_suggestions });\nconst cmd = `cd \"${dir}\" && node scripts/recommendation-engine.js update '${data}'`;\ntry {\n  const out = execSync(cmd, { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });\n  return { success: true, output: out };\n} catch (e) {\n  return { success: false, error: e.message };\n}"
+      },
+      "id": "update-prefs",
+      "name": "🔄 更新偏好图谱",
+      "type": "n8n-nodes-base.code",
+      "position": [1540, 210]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { execSync } = require('child_process');\nconst dir = '/Users/a123/Documents/Obsidian Vault/拆书';\nconst cmd = `cd \"${dir}\" && node scripts/md2card-render.js \"books/${$json.file_name}.md\" \"cards/\"`;\ntry {\n  const out = execSync(cmd, { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });\n  return { success: true, output: out };\n} catch (e) {\n  return { success: false, error: e.message };\n}"
+      },
+      "id": "render-cards",
+      "name": "🎨 MD2Card 渲染",
+      "type": "n8n-nodes-base.code",
+      "position": [1540, 370]
+    }
+  ],
+  "connections": {
+    "⏰ 每日8点触发": {
+      "main": [
+        [
+          { "node": "🔀 手动 / 自动?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "🖐 手动指定书籍": {
+      "main": [
+        [
+          { "node": "🔀 手动 / 自动?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "🔀 手动 / 自动?": {
+      "main": [
+        [
+          { "node": "📖 书籍选择逻辑", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "📖 书籍选择逻辑": {
+      "main": [
+        [
+          { "node": "🧠 DeepSeek 拆书", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "🧠 DeepSeek 拆书": {
+      "main": [
+        [
+          { "node": "📝 填充 Markdown 模板", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "📝 填充 Markdown 模板": {
+      "main": [
+        [
+          { "node": "📓 写入 Obsidian", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "📓 写入 Obsidian": {
+      "main": [
+        [
+          { "node": "🔄 更新偏好图谱", "type": "main", "index": 0 },
+          { "node": "🎨 MD2Card 渲染", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": [],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

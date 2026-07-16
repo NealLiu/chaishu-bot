@@ -1,0 +1,25 @@
+{
+  "name": "📚 拆书自动化工作流",
+  "nodes": [
+    {
+      "parameters": {"httpMethod": "POST", "path": "chaishu", "responseMode": "lastNode"},
+      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "position": [200, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST", "url": "http://127.0.0.1:19876/process",
+        "sendBody": true, "bodyContentType": "json",
+        "bodyParameters": {"parameters": [
+          {"name": "book", "value": "={{ $json.book }}"},
+          {"name": "author", "value": "={{ $json.author }}"},
+          {"name": "system_prompt", "value": "={{ $json.system_prompt }}"},
+          {"name": "user_prompt", "value": "={{ $json.user_prompt }}"}
+        ]}
+      },
+      "id": "processor", "name": "Processor", "type": "n8n-nodes-base.httpRequest", "position": [440, 200]
+    }
+  ],
+  "connections": {"Webhook": {"main": [[{"node": "Processor", "type": "main", "index": 0}]]}},
+  "settings": {"callerPolicy": "workflowsFromSameOwner"},
+  "tags": [], "pinData": {}, "versionId": "1.0.0"
+}

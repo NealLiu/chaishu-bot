@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拆书卡片预览 - 《当下的力量》</title>
+<style>
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FFFBF5;
+    --sage: #7A9A7E;
+    --sage-deep: #5B7B5F;
+    --earth: #C4A882;
+    --clay: #B8845C;
+    --ink: #3D3226;
+    --ink-light: #6B5D4F;
+    --gold: #D4A853;
+    --card-width: 375px;
+    --card-height: 600px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #E8E0D5;
+    font-family: -apple-system, "PingFang SC", "Noto Serif SC", "Source Han Serif SC", serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    gap: 32px;
+  }
+
+  .section-label {
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    color: #8B7D6B;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .cards-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .card {
+    width: var(--card-width);
+    min-height: var(--card-height);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow:
+      0 1px 3px rgba(61,50,38,0.06),
+      0 4px 16px rgba(61,50,38,0.08),
+      0 12px 32px rgba(61,50,38,0.05);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ---- Card 1: Cover ---- */
+  .card-cover {
+    background: linear-gradient(165deg, #F5EFE6 0%, #EDE4D6 30%, #E0D5C1 100%);
+    padding: 48px 36px 40px;
+    justify-content: space-between;
+  }
+  .cover-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--sage-deep);
+    text-transform: uppercase;
+  }
+  .cover-icon {
+    font-size: 56px;
+    line-height: 1;
+    margin: 20px 0 8px;
+  }
+  .cover-title {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    margin-bottom: 12px;
+  }
+  .cover-title em {
+    font-style: normal;
+    color: var(--sage-deep);
+    background: linear-gradient(180deg, transparent 62%, #C8DBCA 62%);
+  }
+  .cover-subtitle {
+    font-size: 15px;
+    color: var(--ink-light);
+    line-height: 1.6;
+  }
+  .cover-author {
+    margin-top: auto;
+    font-size: 12px;
+    color: #A89880;
+    letter-spacing: 0.04em;
+  }
+  .cover-deco {
+    position: absolute;
+    right: 24px;
+    top: 40px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, rgba(198, 179, 140, 0.25), transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ---- Card 2: Content ---- */
+  .card-content {
+    background: var(--warm-white);
+    padding: 40px 32px 36px;
+    gap: 28px;
+  }
+  .card-content .num {
+    font-size: 56px;
+    font-weight: 300;
+    color: #D4C4A8;
+    line-height: 1;
+    margin-bottom: -18px;
+    font-family: "Georgia", "Noto Serif SC", serif;
+  }
+  .card-content h3 {
+    font-size: 19px;
+    color: var(--ink);
+    font-weight: 700;
+    line-height: 1.4;
+    margin-bottom: 10px;
+  }
+  .card-content p {
+    font-size: 14px;
+    color: var(--ink-light);
+    line-height: 1.75;
+  }
+  .card-content .insight {
+    margin-top: 16px;
+    padding: 14px 18px;
+    background: #F7F3EB;
+    border-radius: 10px;
+    border-left: 3px solid var(--sage);
+    font-size: 13.5px;
+    color: #5A6B5C;
+    line-height: 1.6;
+  }
+  .card-content .practice {
+    margin-top: 14px;
+    font-size: 13px;
+    color: #A89070;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  /* ---- Card 3: Dark / Summary ---- */
+  .card-summary {
+    background: #3D3428;
+    padding: 48px 36px;
+    justify-content: center;
+    color: #E8DDD0;
+    gap: 24px;
+  }
+  .card-summary .quote-mark {
+    font-size: 72px;
+    line-height: 0.6;
+    color: rgba(212,168,83,0.35);
+    font-family: Georgia, serif;
+  }
+  .card-summary .quote {
+    font-size: 20px;
+    line-height: 1.7;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+  }
+  .card-summary .quote em {
+    font-style: normal;
+    color: var(--gold);
+  }
+  .card-summary .divider {
+    width: 48px;
+    height: 1px;
+    background: rgba(212,168,83,0.4);
+  }
+  .card-summary .action-list {
+    list-style: none;
+    font-size: 13.5px;
+    color: #C4B8A4;
+    line-height: 2;
+  }
+  .card-summary .action-list li::before {
+    content: "○ ";
+    color: var(--gold);
+  }
+
+  /* ---- Card 4: Reading path ---- */
+  .card-path {
+    background: linear-gradient(165deg, #F2EDE4 0%, #E8DFD0 100%);
+    padding: 40px 32px 36px;
+    gap: 20px;
+  }
+  .card-path h4 {
+    font-size: 15px;
+    color: var(--ink-light);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+  }
+  .path-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .path-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 12px;
+  }
+  .path-arrow {
+    font-size: 18px;
+    color: var(--sage-deep);
+    flex-shrink: 0;
+  }
+  .path-info h5 {
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .path-info span {
+    font-size: 12px;
+    color: #9B8B76;
+  }
+
+  @media (max-width: 800px) {
+    .cards-row { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="section-label">▼ 小红书轮播卡片预览（MD2Card 效果模拟）</div>
+
+<div class="cards-row">
+  <!-- Card 1: Cover -->
+  <div class="card card-cover">
+    <div class="cover-deco"></div>
+    <div>
+      <div class="cover-eyebrow">每天拆一本书 · 第 1 期</div>
+      <div class="cover-icon">🧘</div>
+      <h1 class="cover-title">停止内耗<br>活在<em>此时此刻</em></h1>
+      <p class="cover-subtitle">你的大脑不是你的敌人，<br>但喋喋不休的思维噪音<br>确实是你紧绷的根源。</p>
+    </div>
+    <div class="cover-author">埃克哈特·托利 《当下的力量》</div>
+  </div>
+
+  <!-- Card 2: Key Points 1-2 -->
+  <div class="card card-content">
+    <div>
+      <div class="num">01</div>
+      <h3>你 ≠ 你的思维<br>"小我"是个骗子</h3>
+      <p>大脑里喋喋不休的声音，托利称之为"小我"——它不是真正的你。小我只能活在过去和未来，害怕"当下"。</p>
+      <div class="insight">💡 当你专注做事时感到平静，那是因为小我暂时消失了。</div>
+    </div>
+    <div>
+      <div class="num">02</div>
+      <h3>痛苦之身——体内沉睡的情绪地雷</h3>
+      <p>未被释放的负面情绪在体内形成能量场，平时休眠，一旦被触发就接管你的情绪。</p>
+      <div class="insight">💡 觉察它 = 瓦解它。在内心说："我看到了，这是我的痛苦模式"。</div>
+    </div>
+  </div>
+
+  <!-- Card 3: Key Points 3-4 -->
+  <div class="card card-content">
+    <div>
+      <div class="num">03</div>
+      <h3>时间的幻象<br>过去和未来都不存在</h3>
+      <p>过去只是记忆的痕迹，未来只是思维的投射。焦虑=活在未来，悔恨=活在过去。</p>
+      <div class="practice">🧘 试一下：停下手头的事，感受一次完整的呼吸进出</div>
+    </div>
+    <div>
+      <div class="num">04</div>
+      <h3>临在（Presence）<br>松弛感的终极来源</h3>
+      <p>有觉察地安住于当下。不是"什么都不想"，而是成为思维的观察者。</p>
+      <div class="insight">💡 松弛不是"什么都不做"，而是全身心投入正在做的事。</div>
+    </div>
+  </div>
+
+  <!-- Card 4: Summary + Action -->
+  <div class="card card-summary">
+    <div class="quote-mark">"</div>
+    <p class="quote">你不是你的思维。<br>你是在思维背后，<br>那个<em>觉察到思维存在</em>的<br>更深的意识。</p>
+    <div class="divider"></div>
+    <ul class="action-list">
+      <li>今天设置 3 个"当下锚点"</li>
+      <li>留意一次痛苦之身被触发的时刻</li>
+      <li>睡前 5 分钟身体扫描冥想</li>
+    </ul>
+  </div>
+
+  <!-- Card 5: Reading Path -->
+  <div class="card card-path">
+    <h4>📚 你的专属阅读路径</h4>
+    <div class="path-list">
+      <div class="path-item">
+        <span class="path-arrow">↗</span>
+        <div class="path-info">
+          <h5>《也许你该找个人聊聊》</h5>
+          <span>横向拓展 · 从向内看到向外说</span>
+        </div>
+      </div>
+      <div class="path-item">
+        <span class="path-arrow">→</span>
+        <div class="path-info">
+          <h5>《心流》</h5>
+          <span>深度延伸 · 在专注中找到另一种松弛</span>
+        </div>
+      </div>
+      <div class="path-item">
+        <span class="path-arrow">↘</span>
+        <div class="path-info">
+          <h5>《被讨厌的勇气》</h5>
+          <span>实用落地 · 阿德勒的"课题分离"</span>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:11px;color:#B0A28C;margin-top:auto;text-align:center;">明天继续自动推荐，或回复你想拆的书 📖</p>
+  </div>
+</div>
+
+<p style="color:#9B8B76;font-size:12px;margin-top:24px;max-width:500px;text-align:center;line-height:1.7;">
+↑ 以上为 MD2Card 渲染效果的本地模拟预览。<br>
+实际运行时，n8n 调用 MD2Card API 生成真实 PNG 图片（1242×1660px），通过飞书机器人推送图文消息。<br>
+Obsidian vault 内同步保存 Markdown 源文件 + PNG 卡片图。
+</p>
+
+</body>
+</html>
