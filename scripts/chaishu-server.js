@@ -956,6 +956,34 @@ function buildReadPage(markdown, bookTitle) {
       continue;
     }
 
+    // Trigger
+    if (/^📍/.test(line)) {
+      blocks.push(`<div class="trigger-badge">${line.replace(/\*\*/g, '')}</div>`);
+      continue;
+    }
+
+    // Boundary
+    if (/^⚠️/.test(line)) {
+      blocks.push(`<div class="boundary-warn">${line.replace(/\*\*/g, '')}</div>`);
+      continue;
+    }
+
+    // Napkin summary formula / one_thing
+    if (/^> 📐/.test(line)) {
+      blocks.push(`<div class="napkin-formula">${line.replace(/^> 📐 \*\*核心公式：\*\*\s*/, '')}</div>`);
+      continue;
+    }
+    if (/^> 💡 \*\*记住一件事：\*\*/.test(line)) {
+      blocks.push(`<div class="napkin-onething">${line.replace(/^> 💡 \*\*记住一件事：\*\*\s*/, '')}</div>`);
+      continue;
+    }
+
+    // Critical view
+    if (/^## 🔍 批判视角/.test(line)) {
+      blocks.push('<h2 class="section-title critical">🔍 批判视角</h2>');
+      continue;
+    }
+
     // Horizontal rule
     if (/^---$/.test(line)) {
       blocks.push('<hr class="divider">');
@@ -1066,6 +1094,47 @@ function buildReadPage(markdown, bookTitle) {
     border-radius: 8px;
     font-size: 15px;
     color: #4a6b4a;
+  }
+  .trigger-badge{
+    margin: 6px 0;
+    padding: 6px 14px;
+    background: #e8f0fe;
+    border-radius: 20px;
+    font-size: 14px;
+    color: #3a5a8c;
+    display: inline-block;
+  }
+  .boundary-warn{
+    margin: 6px 0 12px;
+    padding: 8px 14px;
+    background: #fef8e7;
+    border-left: 3px solid #e8c44a;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #8b6914;
+  }
+  .napkin-formula{
+    margin: 10px 0;
+    padding: 16px 20px;
+    background: linear-gradient(135deg,#faf5ff,#f3e8ff);
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    color: #5b21b6;
+    letter-spacing: .02em;
+  }
+  .napkin-onething{
+    margin: 8px 0;
+    padding: 12px 18px;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 700;
+    color: #7c3aed;
+  }
+  .section-title.critical{
+    border-bottom-color: #e8d0a0;
+    color: #8b6914;
   }
   .divider{
     border: none;

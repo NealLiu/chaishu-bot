@@ -107,12 +107,12 @@ describe('fillTemplate', () => {
     tags: ['沟通', '冲突管理'],
     core_framework: '从心开始→学会观察→保证安全',
     key_points: [
-      { title: '知识点1', content: '内容1', insight: '洞见1', practice: '练习1' },
-      { title: '知识点2', content: '内容2', insight: '洞见2', practice: '练习2' },
+      { title: '知识点1', content: '内容1', insight: '洞见1', practice: '练习1', trigger: '冲突前', boundary: '对方完全拒绝沟通时无效' },
+      { title: '知识点2', content: '内容2', insight: '洞见2', practice: '练习2', trigger: '被质疑时', boundary: '紧急情况不适用' },
       { title: '知识点3', content: '内容3', insight: '洞见3', practice: '练习3' },
-      { title: '知识点4', content: '内容4', insight: '洞见4', practice: '练习4' },
-      { title: '知识点5', content: '内容5', insight: '洞见5', practice: '练习5' },
     ],
+    napkin_summary: { formula: '如果坦诚对话，就能化解冲突，因为安全感是沟通的前提', one_thing: '先处理情绪再处理事情' },
+    critical_view: '本书对跨文化沟通场景涉及较少，部分技巧在东亚语境下需调整',
     golden_quote: '关键对话改变人生',
     action_items: ['练习对话技巧', '反思沟通方式'],
     next_suggestions: [
@@ -126,10 +126,29 @@ describe('fillTemplate', () => {
     assert.ok(r.markdown.includes('title: "📖 《关键对话》'));
   });
 
-  it('should include all 5 key points', () => {
+  it('should include all key points', () => {
     const r = fillTemplate(sampleParsed);
     assert.ok(r.markdown.includes('1️⃣ 知识点1'));
-    assert.ok(r.markdown.includes('5️⃣ 知识点5'));
+    assert.ok(r.markdown.includes('3️⃣ 知识点3'));
+  });
+
+  it('should include boundary and trigger', () => {
+    const r = fillTemplate(sampleParsed);
+    assert.ok(r.markdown.includes('触发场景'));
+    assert.ok(r.markdown.includes('注意边界'));
+  });
+
+  it('should include napkin summary', () => {
+    const r = fillTemplate(sampleParsed);
+    assert.ok(r.markdown.includes('餐巾纸总结'));
+    assert.ok(r.markdown.includes('核心公式'));
+    assert.ok(r.markdown.includes('记住一件事'));
+  });
+
+  it('should include critical view', () => {
+    const r = fillTemplate(sampleParsed);
+    assert.ok(r.markdown.includes('批判视角'));
+    assert.ok(r.markdown.includes('东亚语境'));
   });
 
   it('should include golden quote', () => {

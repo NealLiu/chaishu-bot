@@ -70,8 +70,23 @@ function fillTemplate(parsed) {
       `> 🔑 **关键洞见：** ${p.insight || ''}`,
       '',
       `🫁 **试试看：** ${p.practice || ''}`,
-      '',
     );
+    if (p.trigger) lines.push('', `📍 **触发场景：** ${p.trigger}`);
+    if (p.boundary) lines.push('', `⚠️ **注意边界：** ${p.boundary}`);
+    lines.push('');
+  }
+
+  // Napkin summary (餐巾纸总结)
+  const ns2 = parsed.napkin_summary || {};
+  if (ns2.formula || ns2.one_thing) {
+    lines.push('---', '', '## 🧠 餐巾纸总结', '');
+    if (ns2.formula) lines.push(`> 📐 **核心公式：** ${ns2.formula}`, '');
+    if (ns2.one_thing) lines.push(`> 💡 **记住一件事：** ${ns2.one_thing}`, '');
+  }
+
+  // Critical view
+  if (parsed.critical_view) {
+    lines.push('---', '', '## 🔍 批判视角', '', `> ${parsed.critical_view}`, '');
   }
 
   lines.push(
