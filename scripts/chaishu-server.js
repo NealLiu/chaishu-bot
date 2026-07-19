@@ -283,11 +283,11 @@ function feishuDriveUpload(fileName, content, token) {
     const boundary = '----FeishuBoundary' + Math.random().toString(36).slice(2);
 
     const header = Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="file_name"\r\n\r\n${fileName}.md\r\n` +
+      `--${boundary}\r\nContent-Disposition: form-data; name="file_name"\r\n\r\n${fileName}\r\n` +
       `--${boundary}\r\nContent-Disposition: form-data; name="parent_type"\r\n\r\nexplorer\r\n` +
       `--${boundary}\r\nContent-Disposition: form-data; name="parent_node"\r\n\r\n\r\n` +
       `--${boundary}\r\nContent-Disposition: form-data; name="size"\r\n\r\n${buffer.length}\r\n` +
-      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${encodeURIComponent(fileName)}.md"\r\nContent-Type: text/markdown\r\n\r\n`
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${encodeURIComponent(fileName)}"\r\nContent-Type: text/plain\r\n\r\n`
     );
     const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
     const body = Buffer.concat([header, buffer, footer]);
@@ -328,11 +328,11 @@ async function createFeishuDoc(markdown, fileName) {
   const token = await getFeishuToken();
   if (!token) throw new Error('No Feishu token');
 
-  // Strip frontmatter for cleaner doc content
-  let cleanMd = markdown.replace(/^---\n[\s\S]*?\n---\n*/, '');
+  // Strip frontmatter and format for clean reading
+  let cleanMd = formatForFeishu(markdown);
 
-  // Step 1: Upload markdown file to Drive (response includes shareable URL)
-  const { url: docUrl } = await feishuDriveUpload(fileName, cleanMd, token);
+  // Upload as text file (Feishu Drive renders .txt cleanly, .md shows raw symbols)
+  const { url: docUrl } = await feishuDriveUpload(fileName + '.txt', cleanMd, token);
 
   logger.info('Feishu share link created', { doc_url: docUrl });
   return docUrl;

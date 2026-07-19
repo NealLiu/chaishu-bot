@@ -59,10 +59,11 @@ function fillTemplate(parsed) {
     '',
   ];
 
-  for (let i = 0; i < 5; i++) {
-    const p = kp[i] || {};
+  for (let i = 0; i < kp.length; i++) {
+    const p = kp[i];
+    if (!p || !p.title) continue;
     lines.push(
-      `### ${i + 1}️⃣ ${p.title || ''}`,
+      `### ${i + 1}️⃣ ${p.title}`,
       '',
       p.content || '',
       '',
