@@ -323,44 +323,7 @@ function feishuDriveUpload(fileName, content, token) {
   });
 }
 
-// ── Bot folder cache for Feishu Drive ──
-let botFolderToken = null;
-
-async function getBotFolderToken(token) {
-  if (botFolderToken) return botFolderToken;
-
-  // Try to find existing "拆书 Bot" folder
-  try {
-    const listResp = await httpRequest(
-      'https://open.feishu.cn/open-apis/drive/v1/files?page_size=50',
-      'GET',
-      { 'Authorization': `Bearer ${token}` },
-      '');
-    const listData = JSON.parse(listResp);
-    if (listData.code === 0 && listData.data?.files) {
-      const existing = listData.data.files.find((f) => f.name === '拆书 Bot' && f.type === 'folder');
-      if (existing) {
-        botFolderToken = existing.token;
-        logger.info('Bot folder found', { folder_token: botFolderToken });
-        return botFolderToken;
-      }
-    }
-  } catch (e) { logger.warn('Failed to list Drive files', { error: e.message }); }
-
-  // Create folder if not found
-  const createResp = await httpPost('https://open.feishu.cn/open-apis/drive/v1/files',
-    { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    JSON.stringify({ name: '拆书 Bot', type: 'folder', folder_type: 'explorer', parent_token: '' }));
-  const createData = JSON.parse(createResp);
-  if (createData.code === 0 && createData.data?.token) {
-    botFolderToken = createData.data.token;
-    logger.info('Bot folder created', { folder_token: botFolderToken });
-    return botFolderToken;
-  }
-  throw new Error(`Failed to create folder: ${createData.msg}`);
-}
-
-// ── Create Feishu Doc from Markdown ──
+// ── Create Feishu Share Link from Markdown ──
 async function createFeishuDoc(markdown, fileName) {
   const token = await getFeishuToken();
   if (!token) throw new Error('No Feishu token');
@@ -368,64 +331,29 @@ async function createFeishuDoc(markdown, fileName) {
   // Strip frontmatter for cleaner doc content
   let cleanMd = markdown.replace(/^---\n[\s\S]*?\n---\n*/, '');
 
-  // Get or create bot folder
-  const folderToken = await getBotFolderToken(token);
-
-  // Step 1: Upload file to Drive
+  // Step 1: Upload markdown file to Drive
   const fileToken = await feishuDriveUpload(fileName, cleanMd, token);
-  logger.info('Feishu doc: file uploaded', { file_token: fileToken });
 
-  // Step 2: Create import task (md → doc)
-  const importResp = await httpPost('https://open.feishu.cn/open-apis/drive/v1/import_tasks',
-    { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    JSON.stringify({ file_extension: 'md', file_token: fileToken, type: 'doc', file_name: fileName, point: folderToken }));
-  const importData = JSON.parse(importResp);
-  if (importData.code !== 0) throw new Error(`Import task creation failed: ${importData.msg} — ${JSON.stringify(importData).slice(0, 500)}`);
-  const ticket = importData.data.ticket;
-  logger.info('Feishu doc: import ticket created', { ticket });
-
-  // Step 3: Poll for completion (up to 30s)
-  let docToken = null, docUrl = null;
-  for (let i = 0; i < 30; i++) {
-    await new Promise(r => setTimeout(r, 1000));
-    const pollResp = await httpRequest(
-      `https://open.feishu.cn/open-apis/drive/v1/import_tasks/${ticket}`,
-      'GET',
-      { 'Authorization': `Bearer ${token}` },
-      '');
-    const pollData = JSON.parse(pollResp);
-    if (pollData.code !== 0) throw new Error(`Poll failed: ${pollData.msg}`);
-
-    const status = pollData.data.job_status;
-    if (status === 0) {
-      docToken = pollData.data.result.token;
-      docUrl = pollData.data.result.url;
-      logger.info('Feishu doc: import completed', { doc_token: docToken, url: docUrl });
-      break;
-    } else if (status === 2) {
-      throw new Error(`Import task failed (status=2): ${JSON.stringify(pollData.data.result)}`);
-    }
-    logger.info('Feishu doc: polling import...', { ticket, attempt: i + 1, status });
-  }
-  if (!docToken) throw new Error('Import task timed out after 30s');
-
-  // Step 4: Make publicly accessible (anyone with link can view)
+  // Step 2: Make file publicly accessible (anyone with link can view)
   try {
     const permResp = await httpRequest(
-      `https://open.feishu.cn/open-apis/drive/v1/permissions/${docToken}/public?type=doc`,
+      `https://open.feishu.cn/open-apis/drive/v1/permissions/${fileToken}/public?type=file`,
       'PATCH',
       { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       JSON.stringify({ external_access_entity: 'open', invite_external: true, permission: 'view' }));
     const permData = JSON.parse(permResp);
     if (permData.code === 0) {
-      logger.info('Feishu doc: made public (anyone with link can view)');
+      logger.info('Feishu file made public');
     } else {
-      logger.warn('Feishu doc: failed to set public', { code: permData.code, msg: permData.msg });
+      logger.warn('Failed to set file public permission', { code: permData.code, msg: permData.msg });
     }
   } catch (e) {
-    logger.warn('Feishu doc: public permission request error', { error: e.message });
+    logger.warn('Public permission request failed', { error: e.message });
   }
 
+  // Step 3: Construct shareable link (Feishu Drive file URL)
+  const docUrl = `https://bytedance.feishu.cn/drive/${fileToken}`;
+  logger.info('Feishu share link created', { doc_url: docUrl });
   return docUrl;
 }
 
