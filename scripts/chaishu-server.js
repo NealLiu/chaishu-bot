@@ -78,6 +78,28 @@ function checkRequired() {
   }
 }
 
+// ── HTTP helpers ──
+function httpRequest(urlStr, method, headers, bodyStr) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(urlStr);
+    const req = https.request({ hostname: u.hostname, path: u.pathname + u.search,
+      method, headers, timeout: 120000 },
+      res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+      });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    if (bodyStr) req.write(bodyStr);
+    req.end();
+  });
+}
+
+function httpPost(urlStr, headers, bodyStr) {
+  return httpRequest(urlStr, 'POST', headers, bodyStr);
+}
+
 // ── DeepSeek ──
 async function callDeepSeek(systemPrompt, userPrompt) {
   if (!userPrompt.toLowerCase().includes('json')) userPrompt += '\n请以JSON格式输出。';
@@ -750,14 +772,22 @@ async function handleFeishuMessage(event) {
     }
 
     const chatId = msg.chat_id;
-    let text = (JSON.parse(msg.content || '{}')).text || '';
-    // Strip @bot mentions
-    text = text.replace(/@_\w+_\d+\s*/g, '').trim();
-    logger.info('Feishu message received', { text: text.slice(0, 100), chatId });
+    const rawText = (JSON.parse(msg.content || '{}')).text || '';
+
+    // Check if bot was @mentioned (before stripping)
+    const wasMentioned = /@_\w+_\d+/.test(rawText);
+
+    // Strip @bot mentions for clean command matching
+    const text = rawText.replace(/@_\w+_\d+\s*/g, '').trim();
+    logger.info('Feishu message received', { text: text.slice(0, 100), chatId, mentioned: wasMentioned });
+
+    // ═══════════════════════════════════════════
+    // Commands — respond without @mention
+    // ═══════════════════════════════════════════
 
     // ── Command 0: 帮助 / 指令查询 ──
     if (/^(帮助|指令|功能|help|菜单|使用|怎么用|能做什么)/.test(text)) {
-      await sendFeishuReply(chatId, `📖 **拆书 Bot 指令**\n\n🔹 **拆 《书名》** — 拆解新书（已拆过的直接返回）\n🔹 **拆了哪些书** — 查看历史书单\n🔹 **再读 《书名》** — 重新推送某本书\n🔹 **任意文字** — 与当前书深度讨论\n🔹 **帮助** — 显示本菜单`);
+      await sendFeishuReply(chatId, `📖 **拆书 Bot 指令**\n\n🔹 **拆 《书名》** — 拆解新书（已拆过的直接返回）\n🔹 **拆了哪些书** — 查看历史书单\n🔹 **再读 《书名》** — 重新推送某本书\n🔹 **@bot 任意文字** — 与当前书深度讨论\n🔹 **帮助** — 显示本菜单`);
       return;
     }
 
@@ -794,7 +824,7 @@ async function handleFeishuMessage(event) {
         key_points: (md.match(/### \d️⃣ (.+)/g) || []).map(k => k.replace(/### \d️⃣ /, ''))
       };
       chatHistory.set(chatId, []);
-      await sendFeishuReply(chatId, `✅ 已重新推送《${existing.title}》，现在可以讨论这本书了～`);
+      await sendFeishuReply(chatId, `✅ 已重新推送《${existing.title}》，现在可以 @我 讨论这本书了～`);
       return;
     }
 
@@ -815,7 +845,7 @@ async function handleFeishuMessage(event) {
           key_points: (md.match(/### \d️⃣ (.+)/g) || []).map(k => k.replace(/### \d️⃣ /, ''))
         };
         chatHistory.set(chatId, []);
-        await sendFeishuReply(chatId, `✅ 已推送《${existing.title}》，可以继续讨论～`);
+        await sendFeishuReply(chatId, `✅ 已推送《${existing.title}》，可以 @我 继续讨论～`);
         return;
       }
       // New book — process
@@ -828,12 +858,16 @@ async function handleFeishuMessage(event) {
         markdown: result.markdown,
         key_points: (result.markdown.match(/### \d️⃣ (.+)/g) || []).map(k => k.replace(/### \d️⃣ /, ''))
       };
-      await sendFeishuReply(chatId, `✅ 《${result.book_title}》拆解完成！\n📌 ${result.key_points?.length || 5} 个核心知识点\n\n可以直接问我关于这本书的任何问题～`);
+      await sendFeishuReply(chatId, `✅ 《${result.book_title}》拆解完成！\n📌 ${result.key_points?.length || 5} 个核心知识点\n\n可以 @我 问我关于这本书的任何问题～`);
       chatHistory.set(chatId, []);
       return;
     }
 
-    // Discussion — DeepSeek with book context + conversation history
+    // ═══════════════════════════════════════════
+    // Discussion — requires @mention
+    // ═══════════════════════════════════════════
+    if (!wasMentioned) return; // silently ignore non-command, non-mentioned messages
+
     const ctxBook = currentBook;
     let history = chatHistory.get(chatId) || [];
 
