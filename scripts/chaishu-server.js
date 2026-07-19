@@ -337,9 +337,22 @@ async function createFeishuDoc(markdown, fileName) {
   // Build beautiful HTML page
   const html = buildReadPage(markdown, fileName);
 
-  // Upload HTML to Feishu Drive (renders as web page in Feishu browser)
-  const { url: docUrl } = await feishuDriveUpload(fileName + '.html', html, token);
+  // Upload HTML to Feishu Drive
+  const { file_token: fileToken, url: docUrl } = await feishuDriveUpload(fileName + '.html', html, token);
   logger.info('HTML page uploaded to Feishu Drive', { doc_url: docUrl });
+
+  // Make file publicly accessible
+  try {
+    await httpRequest(
+      `https://open.feishu.cn/open-apis/drive/v1/permissions/${fileToken}/public?type=file`,
+      'PATCH',
+      { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      JSON.stringify({ external_access_entity: 'open', invite_external: true, permission: 'view' }));
+    logger.info('File made public');
+  } catch (e) {
+    logger.warn('Public permission failed', { error: e.message });
+  }
+
   return docUrl;
 }
 
