@@ -1159,7 +1159,7 @@ function startScheduler() {
   }, 60000);
 }
 
-server.listen(PORT, '127.0.0.1', () => {
+server.listen(PORT, '0.0.0.0', () => {
   logger.info(`拆书服务器启动`, { port: PORT, url: `http://127.0.0.1:${PORT}`, feishu_enabled: FEISHU_ENABLED });
   console.log(`   手动拆书: curl -X POST http://127.0.0.1:${PORT}/chaishu -d '{"book":"书名","author":"作者"}'`);
   console.log(`   自动推荐: curl -X POST http://127.0.0.1:${PORT}/auto`);
