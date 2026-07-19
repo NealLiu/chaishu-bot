@@ -338,7 +338,7 @@ async function createFeishuDoc(markdown, fileName) {
   // Step 2: Create import task (md → docx)
   const importResp = await httpPost('https://open.feishu.cn/open-apis/drive/v1/import_tasks',
     { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    JSON.stringify({ file_extension: 'md', file_token: fileToken, type: 'docx', file_name: fileName }));
+    JSON.stringify({ file_extension: 'md', file_token: fileToken, type: 'doc', file_name: fileName }));
   const importData = JSON.parse(importResp);
   if (importData.code !== 0) throw new Error(`Import task creation failed: ${importData.msg}`);
   const ticket = importData.data.ticket;
@@ -372,7 +372,7 @@ async function createFeishuDoc(markdown, fileName) {
   // Step 4: Make publicly accessible (anyone with link can view)
   try {
     const permResp = await httpRequest(
-      `https://open.feishu.cn/open-apis/drive/v1/permissions/${docToken}/public?type=docx`,
+      `https://open.feishu.cn/open-apis/drive/v1/permissions/${docToken}/public?type=doc`,
       'PATCH',
       { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       JSON.stringify({ external_access_entity: 'open', invite_external: true, permission: 'view' }));
