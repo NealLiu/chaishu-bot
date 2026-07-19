@@ -323,6 +323,43 @@ function feishuDriveUpload(fileName, content, token) {
   });
 }
 
+// ── Bot folder cache for Feishu Drive ──
+let botFolderToken = null;
+
+async function getBotFolderToken(token) {
+  if (botFolderToken) return botFolderToken;
+
+  // Try to find existing "拆书 Bot" folder
+  try {
+    const listResp = await httpRequest(
+      'https://open.feishu.cn/open-apis/drive/v1/files?page_size=50',
+      'GET',
+      { 'Authorization': `Bearer ${token}` },
+      '');
+    const listData = JSON.parse(listResp);
+    if (listData.code === 0 && listData.data?.files) {
+      const existing = listData.data.files.find((f) => f.name === '拆书 Bot' && f.type === 'folder');
+      if (existing) {
+        botFolderToken = existing.token;
+        logger.info('Bot folder found', { folder_token: botFolderToken });
+        return botFolderToken;
+      }
+    }
+  } catch (e) { logger.warn('Failed to list Drive files', { error: e.message }); }
+
+  // Create folder if not found
+  const createResp = await httpPost('https://open.feishu.cn/open-apis/drive/v1/files',
+    { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    JSON.stringify({ name: '拆书 Bot', type: 'folder', folder_type: 'explorer', parent_token: '' }));
+  const createData = JSON.parse(createResp);
+  if (createData.code === 0 && createData.data?.token) {
+    botFolderToken = createData.data.token;
+    logger.info('Bot folder created', { folder_token: botFolderToken });
+    return botFolderToken;
+  }
+  throw new Error(`Failed to create folder: ${createData.msg}`);
+}
+
 // ── Create Feishu Doc from Markdown ──
 async function createFeishuDoc(markdown, fileName) {
   const token = await getFeishuToken();
@@ -331,16 +368,19 @@ async function createFeishuDoc(markdown, fileName) {
   // Strip frontmatter for cleaner doc content
   let cleanMd = markdown.replace(/^---\n[\s\S]*?\n---\n*/, '');
 
+  // Get or create bot folder
+  const folderToken = await getBotFolderToken(token);
+
   // Step 1: Upload file to Drive
   const fileToken = await feishuDriveUpload(fileName, cleanMd, token);
   logger.info('Feishu doc: file uploaded', { file_token: fileToken });
 
-  // Step 2: Create import task (md → docx)
+  // Step 2: Create import task (md → doc)
   const importResp = await httpPost('https://open.feishu.cn/open-apis/drive/v1/import_tasks',
     { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    JSON.stringify({ file_extension: 'md', file_token: fileToken, type: 'doc', file_name: fileName }));
+    JSON.stringify({ file_extension: 'md', file_token: fileToken, type: 'doc', file_name: fileName, point: folderToken }));
   const importData = JSON.parse(importResp);
-  if (importData.code !== 0) throw new Error(`Import task creation failed: ${importData.msg}`);
+  if (importData.code !== 0) throw new Error(`Import task creation failed: ${importData.msg} — ${JSON.stringify(importData).slice(0, 500)}`);
   const ticket = importData.data.ticket;
   logger.info('Feishu doc: import ticket created', { ticket });
 
