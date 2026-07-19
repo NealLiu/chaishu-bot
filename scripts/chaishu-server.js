@@ -293,7 +293,7 @@ function feishuDriveUpload(fileName, content, token) {
       `--${boundary}\r\nContent-Disposition: form-data; name="parent_type"\r\n\r\nexplorer\r\n` +
       `--${boundary}\r\nContent-Disposition: form-data; name="parent_node"\r\n\r\n\r\n` +
       `--${boundary}\r\nContent-Disposition: form-data; name="size"\r\n\r\n${buffer.length}\r\n` +
-      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${encodeURIComponent(fileName)}"\r\nContent-Type: text/plain\r\n\r\n`
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${encodeURIComponent(fileName)}"\r\nContent-Type: text/html\r\n\r\n`
     );
     const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
     const body = Buffer.concat([header, buffer, footer]);
@@ -329,14 +329,17 @@ function feishuDriveUpload(fileName, content, token) {
   });
 }
 
-// ── Create Reading Page URL ──
+// ── Create Reading Page (upload to Feishu Drive) ──
 async function createFeishuDoc(markdown, fileName) {
-  // Store markdown for the reading endpoint
-  bookCache.set(fileName, markdown);
+  const token = await getFeishuToken();
+  if (!token) throw new Error('No Feishu token');
 
-  // Return server-hosted URL (user can set PUBLIC_URL for external access)
-  const docUrl = `${PUBLIC_URL}/read/${encodeURIComponent(fileName)}`;
-  logger.info('Reading page URL created', { doc_url: docUrl });
+  // Build beautiful HTML page
+  const html = buildReadPage(markdown, fileName);
+
+  // Upload HTML to Feishu Drive (renders as web page in Feishu browser)
+  const { url: docUrl } = await feishuDriveUpload(fileName + '.html', html, token);
+  logger.info('HTML page uploaded to Feishu Drive', { doc_url: docUrl });
   return docUrl;
 }
 
