@@ -609,6 +609,12 @@ async function autoProcess() {
     { encoding: 'utf-8', maxBuffer: 10485760 });
   const prefs = JSON.parse(prefsYaml).preferences;
 
+  // First book: always start with 高绩效教练
+  if (prefs.book_count === 0) {
+    logger.info('Auto: first book — 高绩效教练');
+    return processBook('高绩效教练', '约翰·惠特默', null, 'auto');
+  }
+
   // Use recommendation prompt to get next book
   const recPrompt = fs.readFileSync(path.join(VAULT, 'prompts/recommendation-system.md'), 'utf-8');
   const userPrompt = `请根据以下偏好图谱推荐下一本书：\n\`\`\`yaml\n${prefsYaml.slice(0, 5000)}\n\`\`\`\n\n请推荐一本适合用户当前阶段的书，输出 JSON 格式。`;
