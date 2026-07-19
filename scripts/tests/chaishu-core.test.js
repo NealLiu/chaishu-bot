@@ -112,6 +112,8 @@ describe('fillTemplate', () => {
       { title: '知识点3', content: '内容3', insight: '洞见3', practice: '练习3' },
     ],
     napkin_summary: { formula: '如果坦诚对话，就能化解冲突，因为安全感是沟通的前提', one_thing: '先处理情绪再处理事情' },
+    knowledge_position: { level: '进阶', prerequisites: '基本的沟通意愿和倾听能力', position: '沟通领域从理论到实操的桥梁书，介于《非暴力沟通》的情感层和《关键对话》的方法层之间', next_step: '深入非暴力沟通或影响力领域' },
+    skip_guide: { must_read: '第3章营造安全感、第5章STATE法', can_skip: '第1-2章的故事铺垫（熟悉沟通概念的读者）', time_allocation: '精读3-5章（60%），略读1-2章（10%），实践练习（30%）' },
     critical_view: '本书对跨文化沟通场景涉及较少，部分技巧在东亚语境下需调整',
     golden_quote: '关键对话改变人生',
     action_items: ['练习对话技巧', '反思沟通方式'],
@@ -143,6 +145,22 @@ describe('fillTemplate', () => {
     assert.ok(r.markdown.includes('餐巾纸总结'));
     assert.ok(r.markdown.includes('核心公式'));
     assert.ok(r.markdown.includes('记住一件事'));
+  });
+
+  it('should include knowledge position', () => {
+    const r = fillTemplate(sampleParsed);
+    assert.ok(r.markdown.includes('知识坐标'));
+    assert.ok(r.markdown.includes('阅读难度'));
+    assert.ok(r.markdown.includes('前置知识'));
+    assert.ok(r.markdown.includes('下一步方向'));
+  });
+
+  it('should include skip guide', () => {
+    const r = fillTemplate(sampleParsed);
+    assert.ok(r.markdown.includes('阅读优先级'));
+    assert.ok(r.markdown.includes('必读'));
+    assert.ok(r.markdown.includes('可跳过'));
+    assert.ok(r.markdown.includes('时间分配'));
   });
 
   it('should include critical view', () => {

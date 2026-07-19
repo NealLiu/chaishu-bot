@@ -84,6 +84,27 @@ function fillTemplate(parsed) {
     if (ns2.one_thing) lines.push(`> 💡 **记住一件事：** ${ns2.one_thing}`, '');
   }
 
+  // Knowledge position (知识坐标)
+  const kp2 = parsed.knowledge_position || {};
+  if (kp2.level || kp2.position) {
+    lines.push('---', '', '## 🗺️ 知识坐标', '');
+    if (kp2.level) lines.push(`- **阅读难度**：${kp2.level}`, '');
+    if (kp2.prerequisites) lines.push(`- **前置知识**：${kp2.prerequisites}`, '');
+    if (kp2.position) lines.push(`- **知识定位**：${kp2.position}`, '');
+    if (kp2.next_step) lines.push(`- **下一步方向**：${kp2.next_step}`, '');
+    lines.push('');
+  }
+
+  // Skip guide (断舍离)
+  const sg = parsed.skip_guide || {};
+  if (sg.must_read || sg.can_skip) {
+    lines.push('## ✂️ 阅读优先级', '');
+    if (sg.must_read) lines.push(`- 🔴 **必读**：${sg.must_read}`, '');
+    if (sg.can_skip) lines.push(`- ⚪ **可跳过**：${sg.can_skip}`, '');
+    if (sg.time_allocation) lines.push(`- ⏱️ **时间分配**：${sg.time_allocation}`, '');
+    lines.push('');
+  }
+
   // Critical view
   if (parsed.critical_view) {
     lines.push('---', '', '## 🔍 批判视角', '', `> ${parsed.critical_view}`, '');

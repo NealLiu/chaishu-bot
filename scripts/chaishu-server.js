@@ -978,6 +978,46 @@ function buildReadPage(markdown, bookTitle) {
       continue;
     }
 
+    // Knowledge position (知识坐标)
+    if (/^## 🗺️ 知识坐标/.test(line)) {
+      blocks.push('<h2 class="section-title map">🗺️ 知识坐标</h2>');
+      continue;
+    }
+    if (/^- \*\*阅读难度\*\*/.test(line)) {
+      blocks.push(`<div class="map-item">${line.replace(/^- \*\*阅读难度\*\*：/, '📖 难度：')}</div>`);
+      continue;
+    }
+    if (/^- \*\*前置知识\*\*/.test(line)) {
+      blocks.push(`<div class="map-item">${line.replace(/^- \*\*前置知识\*\*：/, '📋 前置：')}</div>`);
+      continue;
+    }
+    if (/^- \*\*知识定位\*\*/.test(line)) {
+      blocks.push(`<div class="map-item pos">${line.replace(/^- \*\*知识定位\*\*：/, '')}</div>`);
+      continue;
+    }
+    if (/^- \*\*下一步方向\*\*/.test(line)) {
+      blocks.push(`<div class="map-item next">${line.replace(/^- \*\*下一步方向\*\*：/, '👉 ')}</div>`);
+      continue;
+    }
+
+    // Skip guide (断舍离)
+    if (/^## ✂️ 阅读优先级/.test(line)) {
+      blocks.push('<h2 class="section-title skip">✂️ 阅读优先级</h2>');
+      continue;
+    }
+    if (/^- 🔴 \*\*必读\*\*/.test(line)) {
+      blocks.push(`<div class="skip-must">${line.replace(/\*\*/g, '').replace(/^- 🔴 必读：/, '🔴 ')}</div>`);
+      continue;
+    }
+    if (/^- ⚪ \*\*可跳过\*\*/.test(line)) {
+      blocks.push(`<div class="skip-can">${line.replace(/\*\*/g, '').replace(/^- ⚪ 可跳过：/, '⚪ ')}</div>`);
+      continue;
+    }
+    if (/^- ⏱️ \*\*时间分配\*\*/.test(line)) {
+      blocks.push(`<div class="skip-time">${line.replace(/\*\*/g, '').replace(/^- ⏱️ 时间分配：/, '⏱️ ')}</div>`);
+      continue;
+    }
+
     // Critical view
     if (/^## 🔍 批判视角/.test(line)) {
       blocks.push('<h2 class="section-title critical">🔍 批判视角</h2>');
@@ -1136,6 +1176,43 @@ function buildReadPage(markdown, bookTitle) {
     border-bottom-color: #e8d0a0;
     color: #8b6914;
   }
+  .section-title.map{
+    border-bottom-color: #c4d4f0;
+    color: #3a5a8c;
+  }
+  .section-title.skip{
+    border-bottom-color: #d4d4d4;
+    color: #5a5a5a;
+  }
+  .map-item{
+    margin: 4px 0;
+    padding: 6px 12px;
+    font-size: 14px;
+    color: #4a5a7a;
+    border-radius: 6px;
+  }
+  .map-item.pos{
+    background: #f0f4fa;
+    padding: 12px 16px;
+    font-size: 15px;
+    color: #3a5a8c;
+    border-left: 3px solid #6b8fc4;
+  }
+  .map-item.next{
+    background: #faf5ff;
+    padding: 8px 14px;
+    font-size: 14px;
+    color: #6b4a8c;
+  }
+  .skip-must,.skip-can,.skip-time{
+    margin: 4px 0;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .skip-must{ background: #fef0f0; color: #8b3a3a; }
+  .skip-can{ background: #f5f5f5; color: #8b8b8b; }
+  .skip-time{ background: #f8f5f0; color: #6b5d3a; }
   .divider{
     border: none;
     height: 1px;
