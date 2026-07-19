@@ -10,6 +10,7 @@ const {
   validateContent,
   formatForFeishu,
   formatXHS,
+  formatPlainText,
 } = require('../lib/chaishu-core.js');
 
 // ═══════════════════════════════════════════════
@@ -269,5 +270,50 @@ describe('formatXHS', () => {
   it('should include golden quote', () => {
     const r = formatXHS(sample);
     assert.ok(r.includes('关键对话改变人生'));
+  });
+});
+
+// ═══════════════════════════════════════════════
+// formatPlainText
+// ═══════════════════════════════════════════════
+describe('formatPlainText', () => {
+  it('should strip frontmatter', () => {
+    const r = formatPlainText('---\ntitle: test\n---\n\nHello World');
+    assert.ok(!r.includes('---'));
+    assert.ok(r.includes('Hello World'));
+  });
+
+  it('should strip bold markers', () => {
+    const r = formatPlainText('This is **bold** text');
+    assert.ok(!r.includes('**'));
+    assert.ok(r.includes('【bold】'));
+  });
+
+  it('should strip italic markers', () => {
+    const r = formatPlainText('This is *italic* text');
+    assert.ok(!r.includes('*italic*'));
+  });
+
+  it('should convert headers to decorated text', () => {
+    const r = formatPlainText('## Section Title\ncontent');
+    assert.ok(!r.includes('##'));
+    assert.ok(r.includes('Section Title'));
+  });
+
+  it('should format blockquotes', () => {
+    const r = formatPlainText('> Some quote');
+    assert.ok(!r.includes('>'));
+    assert.ok(r.includes('Some quote'));
+  });
+
+  it('should convert checkboxes', () => {
+    const r = formatPlainText('- [ ] 任务一');
+    assert.ok(r.includes('○ 任务一'));
+  });
+
+  it('should handle tables', () => {
+    const r = formatPlainText('| 横向拓展 | 《书A》 | 理由 |');
+    assert.ok(r.includes('• 《书A》'));
+    assert.ok(!r.includes('|'));
   });
 });

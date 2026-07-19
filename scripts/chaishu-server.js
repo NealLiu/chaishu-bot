@@ -17,7 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const Lark = require('@larksuiteoapi/node-sdk');
 const logger = require('./logger');
-const { validateBookParams, repairJSON, fillTemplate, validateContent, formatForFeishu, formatXHS } = require('./lib/chaishu-core.js');
+const { validateBookParams, repairJSON, fillTemplate, validateContent, formatForFeishu, formatXHS, formatPlainText } = require('./lib/chaishu-core.js');
 
 // ── .env 加载 ──
 function loadEnv(envPath) {
@@ -328,8 +328,8 @@ async function createFeishuDoc(markdown, fileName) {
   const token = await getFeishuToken();
   if (!token) throw new Error('No Feishu token');
 
-  // Strip frontmatter and format for clean reading
-  let cleanMd = formatForFeishu(markdown);
+  // Strip markdown symbols for clean .txt reading
+  let cleanMd = formatPlainText(markdown);
 
   // Upload as text file (Feishu Drive renders .txt cleanly, .md shows raw symbols)
   const { url: docUrl } = await feishuDriveUpload(fileName + '.txt', cleanMd, token);
