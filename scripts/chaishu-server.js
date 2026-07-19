@@ -308,8 +308,8 @@ function feishuDriveUpload(fileName, content, token) {
         try {
           const j = JSON.parse(d);
           if (j.code === 0 && j.data?.file_token) {
-            logger.info('Feishu drive upload ok', { file_token: j.data.file_token });
-            resolve(j.data.file_token);
+            logger.info('Feishu drive upload ok', { file_token: j.data.file_token, url: j.data.url });
+            resolve({ file_token: j.data.file_token, url: j.data.url });
           } else {
             reject(new Error(`Drive upload failed: ${j.msg || j.code} — ${d.slice(0, 200)}`));
           }
@@ -331,42 +331,22 @@ async function createFeishuDoc(markdown, fileName) {
   // Strip frontmatter for cleaner doc content
   let cleanMd = markdown.replace(/^---\n[\s\S]*?\n---\n*/, '');
 
-  // Step 1: Upload markdown file to Drive
-  const fileToken = await feishuDriveUpload(fileName, cleanMd, token);
+  // Step 1: Upload markdown file to Drive (response includes shareable URL)
+  const { url: docUrl } = await feishuDriveUpload(fileName, cleanMd, token);
 
-  // Step 2: Make file publicly accessible (anyone with link can view)
-  try {
-    const permResp = await httpRequest(
-      `https://open.feishu.cn/open-apis/drive/v1/permissions/${fileToken}/public?type=file`,
-      'PATCH',
-      { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      JSON.stringify({ external_access_entity: 'open', invite_external: true, permission: 'view' }));
-    const permData = JSON.parse(permResp);
-    if (permData.code === 0) {
-      logger.info('Feishu file made public');
-    } else {
-      logger.warn('Failed to set file public permission', { code: permData.code, msg: permData.msg });
-    }
-  } catch (e) {
-    logger.warn('Public permission request failed', { error: e.message });
-  }
-
-  // Step 3: Construct shareable link (Feishu Drive file URL)
-  const docUrl = `https://bytedance.feishu.cn/drive/${fileToken}`;
   logger.info('Feishu share link created', { doc_url: docUrl });
   return docUrl;
 }
 
 // ── Feishu Cover Card Push ──
-async function feishuPushCoverCard({ title, book_title, one_line_summary, author, category, date, image_key, doc_url, markdown }) {
+async function feishuPushCoverCard({ title, book_title, one_line_summary, author, category, date, doc_url, markdown }) {
   if (DEBUG_MODE) { logger.info('Debug mode: skip cover card', { title, doc_url }); return; }
   if (!FEISHU_ENABLED) return;
 
   const token = await getFeishuToken();
   if (!token) { logger.warn('Cover card skipped — no token'); return; }
 
-  // Best case: cover image + doc link
-  if (image_key && doc_url) {
+  if (doc_url) {
     const card = JSON.stringify({
       config: { wide_screen_mode: true },
       header: {
@@ -374,13 +354,6 @@ async function feishuPushCoverCard({ title, book_title, one_line_summary, author
         template: 'carmine'
       },
       elements: [
-        {
-          tag: 'img',
-          img_key: image_key,
-          alt: { tag: 'plain_text', content: `《${book_title || ''}》` },
-          mode: 'fit_horizontal',
-          preview: true
-        },
         {
           tag: 'markdown',
           content: `**${one_line_summary || ''}**\n${[author, category, date].filter(Boolean).join(' · ')}`
@@ -418,8 +391,8 @@ async function feishuPushCoverCard({ title, book_title, one_line_summary, author
     return;
   }
 
-  // Fallback: no cover image or doc URL → use old markdown chunked approach
-  logger.info('Cover card fallback to markdown (no image/doc)', { image_key: !!image_key, doc_url: !!doc_url });
+  // Fallback: no doc URL → use old markdown chunked approach
+  logger.info('Cover card fallback to markdown (no doc URL)');
   const feishuText = formatForFeishu(markdown || '');
   if (feishuText) await feishuPushChunked(title, feishuText, token);
 }
@@ -522,26 +495,12 @@ async function processBook(book, author, customPrompts, source) {
   updatePreferences(result, source || 'manual');
   logger.info('Preferences updated');
 
-  // Generate cover image, create Feishu doc, push cover card
+  // Create Feishu doc and push cover card
   const pushTitle = `📖 《${parsed.book_title}》· ${parsed.one_line_summary || ''}`;
 
-  let imageKey = null;
   let docUrl = null;
 
-  // Step A: Render cover card image (first page only)
-  if (FEISHU_ENABLED && !DEBUG_MODE) {
-    try {
-      const imagePaths = await renderCards(result.file_name, result.file_name);
-      const coverPath = imagePaths.find(p => /card_.*_1\.png$/i.test(p)) || imagePaths[0];
-      if (coverPath) {
-        const token = await getFeishuToken();
-        imageKey = await feishuUploadImage(coverPath, token);
-        logger.info('Cover image uploaded', { image_key: imageKey });
-      }
-    } catch (e) { logger.warn('Cover image generation failed', { error: e.message }); }
-  }
-
-  // Step B: Create Feishu doc from markdown
+  // Create Feishu doc from markdown (upload + share)
   if (FEISHU_ENABLED && !DEBUG_MODE) {
     try {
       docUrl = await createFeishuDoc(result.markdown, result.file_name);
@@ -549,7 +508,7 @@ async function processBook(book, author, customPrompts, source) {
     } catch (e) { logger.warn('Feishu doc creation failed', { error: e.message }); }
   }
 
-  // Step C: Push cover card (or fallback to chunked markdown)
+  // Push cover card (or fallback to chunked markdown)
   await feishuPushCoverCard({
     title: pushTitle,
     book_title: parsed.book_title,
@@ -557,7 +516,6 @@ async function processBook(book, author, customPrompts, source) {
     author: parsed.author,
     category: parsed.category,
     date: result.date,
-    image_key: imageKey,
     doc_url: docUrl,
     markdown: result.markdown
   });
@@ -616,26 +574,9 @@ async function pushExistingBook(md, existing) {
     }
   } catch {}
 
-  let imageKey = null;
   let docUrl = null;
 
-  // Step A: Render cover image
-  if (FEISHU_ENABLED && !DEBUG_MODE) {
-    try {
-      const fileName = path.basename(existing.path || '', '.md');
-      if (fileName) {
-        const imagePaths = await renderCards(fileName, fileName);
-        const coverPath = imagePaths.find(p => /card_.*_1\.png$/i.test(p)) || imagePaths[0];
-        if (coverPath) {
-          const token = await getFeishuToken();
-          imageKey = await feishuUploadImage(coverPath, token);
-          logger.info('Re-push cover image uploaded', { image_key: imageKey });
-        }
-      }
-    } catch (e) { logger.warn('Re-push cover image failed', { error: e.message }); }
-  }
-
-  // Step B: Create Feishu doc
+  // Create Feishu doc from markdown
   if (FEISHU_ENABLED && !DEBUG_MODE) {
     try {
       docUrl = await createFeishuDoc(md, existing.title);
@@ -643,7 +584,7 @@ async function pushExistingBook(md, existing) {
     } catch (e) { logger.warn('Re-push Feishu doc creation failed', { error: e.message }); }
   }
 
-  // Step C: Push cover card
+  // Push cover card
   await feishuPushCoverCard({
     title: pushTitle,
     book_title: bookTitle,
@@ -651,7 +592,6 @@ async function pushExistingBook(md, existing) {
     author,
     category,
     date,
-    image_key: imageKey,
     doc_url: docUrl,
     markdown: md
   });
