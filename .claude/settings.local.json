@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "Bash(node -c \"/Users/a123/Documents/Obsidian Vault/拆书/scripts/chaishu-server.js\")",
+      "Bash(node -c scripts/chaishu-server.js)",
+      "Bash(timeout 5 node scripts/chaishu-server.js)",
+      "Bash(node -e ' *)",
+      "Bash(bash scripts/test-pipeline.sh --ci)",
+      "Bash(npm install *)",
+      "Bash(node --test tests/chaishu-core.test.js)",
+      "Bash(cp scripts/chaishu-server.js scripts/chaishu-server.js.bak)",
+      "Bash(npx eslint *)",
+      "Bash(sed -i '' 's/\\\\\\\\？/?/g' md2card-render.js)",
+      "Bash(sed -i '' 's/\\\\bdocument\\\\b/window.document/g' md2card-render.js)"
     ]
   }
 }

@@ -1,5 +1,39 @@
+# ── Dependencies ──
 node_modules/
-cards/*.png
-.DS_Store
-*.log
+
+# ── Environment & Secrets ──
 .env
+.env.local
+.env.*.local
+
+# ── Book Content (personal reading data) ──
+books/*.md
+!books/README.md
+
+# ── Generated Cards ──
+cards/
+
+# ── Logs ──
+*.log
+logs/
+
+# ── OS files ──
+.DS_Store
+Thumbs.db
+
+# ── IDE ──
+.vscode/
+.idea/
+
+# ── Backup files ──
+*.bak
+*.tmp
+*.swp
+*~
+
+# ── Claude config (local only) ──
+.claude/settings.local.json
+
+# ── Deprecated / Legacy ──
+workflows/
+docs/

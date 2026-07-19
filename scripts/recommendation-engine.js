@@ -29,7 +29,7 @@ function parsePreferences() {
 
 function stringifyPreferences(prefs) {
   const yamlStr = yaml.stringify(prefs, { lineWidth: 120 });
-  return '```yaml\n' + yamlStr + '```';
+  return `\`\`\`yaml\n${ yamlStr }\`\`\``;
 }
 
 function countBooks() {
@@ -49,7 +49,42 @@ function countBooks() {
  */
 function updatePreferences(bookResult) {
   const prefs = parsePreferences();
-  const { tags = [], next_suggestions = [], category = '', book_title = '' } = bookResult;
+  const { tags = [], next_suggestions: nextSuggestions = [], category = '', book_title: bookTitle = '', author = '', date = '', source = 'manual' } = bookResult;
+
+  // 0. 更新书籍表格（在 YAML 块之前插入）
+  const content = fs.readFileSync(INDEX_PATH, 'utf-8');
+  const bookDate = date || new Date().toISOString().split('T')[0];
+  const bookRow = `| ${bookDate} | 《${bookTitle}》 | ${author || '未知'} | ${category || ''} | ${source === 'auto' ? '每日自动推荐' : '手动指定'} |`;
+
+  // 在表格最后一行（分隔线后）插入新行
+  const tableEnd = content.indexOf('```yaml');
+  const beforeTable = content.slice(0, tableEnd);
+  const hasBooks = beforeTable.includes('| ') && beforeTable.match(/\| \d{4}-\d{2}-\d{2} \|/);
+
+  let newContent;
+  if (hasBooks) {
+    // Append after last book row
+    const lines = beforeTable.split('\n');
+    let lastBookLine = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (lines[i].match(/^\| \d{4}-\d{2}-\d{2} \|/)) { lastBookLine = i; break; }
+    }
+    if (lastBookLine >= 0) {
+      lines.splice(lastBookLine + 1, 0, bookRow);
+      newContent = lines.join('\n') + content.slice(tableEnd);
+    } else {
+      newContent = content;
+    }
+  } else {
+    // First book — insert after table header
+    newContent = beforeTable.replace(
+      /(\|------\|------\|------\|------\|----------\|)/,
+      `$1\n${ bookRow}`,
+    ) + content.slice(tableEnd);
+  }
+
+  // Update frontmatter date
+  newContent = newContent.replace(/updated: \d{4}-\d{2}-\d{2}/, `updated: ${bookDate}`);
 
   // 1. 合并标签权重
   for (const tag of tags) {
@@ -79,7 +114,7 @@ function updatePreferences(bookResult) {
     .filter((g) => !gapsToRemove.includes(g));
 
   // 4. 从关联推荐中提取新缺口
-  for (const sug of next_suggestions) {
+  for (const sug of nextSuggestions) {
     const reason = sug.reason || '';
     const parts = reason.split('·');
     for (const part of parts) {
@@ -92,8 +127,8 @@ function updatePreferences(bookResult) {
   }
 
   // 5. 更新阅读路径
-  prefs.preferences.reading_path.current_book = book_title;
-  prefs.preferences.reading_path.branches = (next_suggestions || []).map((s) => ({
+  prefs.preferences.reading_path.current_book = bookTitle;
+  prefs.preferences.reading_path.branches = (nextSuggestions || []).map((s) => ({
     direction: s.direction,
     book: s.book,
     reason: s.reason,
@@ -113,11 +148,10 @@ function updatePreferences(bookResult) {
     }
   }
 
-  // 8. 写回
-  const content = fs.readFileSync(INDEX_PATH, 'utf-8');
+  // 8. 写回（在已含表格更新的 newContent 上替换 YAML）
   const newYamlBlock = stringifyPreferences(prefs);
-  const newContent = content.replace(/```yaml\n[\s\S]*?```/, newYamlBlock);
-  fs.writeFileSync(INDEX_PATH, newContent, 'utf-8');
+  const finalContent = newContent.replace(/```yaml\n[\s\S]*?```/, newYamlBlock);
+  fs.writeFileSync(INDEX_PATH, finalContent, 'utf-8');
 
   return prefs;
 }
@@ -132,15 +166,24 @@ function main() {
     const prefs = parsePreferences();
     console.log(JSON.stringify(prefs, null, 2));
   } else if (command === 'update') {
-    if (!input) {
-      console.error('用法: node recommendation-engine.js update \'{"tags":["心理学"],...}\'');
-      process.exit(1);
-    }
     let bookResult;
-    try {
-      bookResult = JSON.parse(input);
-    } catch (e) {
-      console.error('JSON 解析失败:', e.message);
+    // Support --file mode (UTF-8 safe)
+    if (input === '--file' && process.argv[4]) {
+      try {
+        bookResult = JSON.parse(fs.readFileSync(process.argv[4], 'utf-8'));
+      } catch (e) {
+        console.error('读取文件失败:', e.message);
+        process.exit(1);
+      }
+    } else if (input) {
+      try {
+        bookResult = JSON.parse(input);
+      } catch (e) {
+        console.error('JSON 解析失败:', e.message);
+        process.exit(1);
+      }
+    } else {
+      console.error('用法: node recommendation-engine.js update \'<json>\' 或 --file <path>');
       process.exit(1);
     }
     const updated = updatePreferences(bookResult);
