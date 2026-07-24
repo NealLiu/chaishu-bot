@@ -406,7 +406,7 @@ async function createFeishuDoc(markdown, fileName) {
       `https://open.feishu.cn/open-apis/drive/v1/permissions/${uploadResp.file_token}/public?type=file`,
       'PATCH',
       { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      JSON.stringify({ external_access_entity: 'open', invite_external: true, permission: 'view' }));
+      JSON.stringify({ external_access_entity: 'open', invite_external: true, link_share_entity: 'anyone_readable', share_entity: 'anyone', permission: 'view' }));
   } catch (e) { logger.warn('Public permission failed', { error: e.message }); }
 
   logger.info('PNG uploaded to Drive', { url: uploadResp.url });
